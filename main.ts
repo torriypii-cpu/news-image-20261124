@@ -11,9 +11,28 @@
 //
 // Outside the grader, MAKEFUN_OUTPUT_DIR stands in for /output.
 
-import { copyFileSync, mkdirSync } from 'node:fs';
+import { copyFileSync, mkdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
 const outDir = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
+const src = new URL('./entry.png', import.meta.url);
+
+// Validate the source image before copying so a missing or empty file
+// fails loudly instead of silently producing a broken submission.
+let size: number;
+try {
+  size = statSync(src).size;
+} catch {
+  throw new Error(`entry.png not found next to main.ts (${src.pathname})`);
+}
+if (size === 0) {
+  throw new Error('entry.png is empty (0 bytes); refusing to copy');
+}
+
 mkdirSync(outDir, { recursive: true });
-copyFileSync(new URL('./entry.png', import.meta.url), join(outDir, 'entry.png'));
+const dest = join(outDir, 'entry.png');
+copyFileSync(src, dest);
+
+// Confirm what actually landed, so the grader log shows the deliverable.
+const written = statSync(dest).size;
+console.log(`wrote ${dest} (${written} bytes)`);
